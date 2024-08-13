@@ -1,19 +1,22 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 import pandas as pd
 import joblib
 
-app = Flask(__name__)
+app = FastAPI()
 
 # تحميل النموذج المدرب و LabelEncoder
 best_model = joblib.load('best_model.pkl')
 label_encoder = joblib.load('label_encoder.pkl')
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.get_json(force=True)
+# تعريف نموذج البيانات باستخدام Pydantic
+class InputData(BaseModel):
+    answers: list
 
+@app.post('/predict')
+def predict(data: InputData):
     # تحضير المدخلات الجديدة
-    answers = data['answers']
+    answers = data.answers
 
     # تحويل المدخلات إلى نفس التنسيق المستخدم في التدريب
     input_data = {
@@ -55,7 +58,7 @@ def predict():
 
     if predicted_quality[0] in ['Poor', 'Average']:
         for i, answer in enumerate(answers, start=1):
-            if answer in ['Yes','Moderately noisy', 'Noisy', 'Cool', 'Hot', 'Yes']:
+            if answer in ['Yes', 'Moderately noisy', 'Noisy', 'Cool', 'Hot', 'Yes']:
                 q_key = f"Q{i}"
                 explanation, recommendation = explanations_recommendations[q_key]
                 reasons.append(explanation)
@@ -67,7 +70,8 @@ def predict():
         'recommendations': recommendations
     }
 
-    return jsonify(response)
+    return response
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=8000)
