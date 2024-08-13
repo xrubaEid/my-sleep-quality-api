@@ -1,5 +1,4 @@
 fastapi
-uvicorn
 Flask
 pandas
 scikit-learn
